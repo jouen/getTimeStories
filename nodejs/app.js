@@ -1,4 +1,5 @@
 const http      = require('http');
+const https     = require('https');
 const url       = require("url");
 
 const app = http.createServer(function(req,res){
@@ -31,36 +32,43 @@ const routes = {
             return;
         }
 
-        const request   = require("request");
-
         //get content on time.com
-        request({uri: "https://time.com/"}, 
-        function(error, response, body) {
+        var request = https.request({
+            host: 'time.com'
+        }, function (response) {
+            var data = '';
+            response.on('data', function (chunk) {
+                data += chunk;
+            });
+            response.on('end', function () {
 
-            //get only onn the latest storiees item
-            let regex = /<li class="latest-stories__item">\n.*?<a href="(.*?)">\n.*?<h3 class="latest-stories__item-headline">(.*?)<\/h3>\n.*?<\/a>/g;
-            let match = [...body.matchAll(regex)];
+                //get only onn the latest storiees item
+                let regex = /<li class="latest-stories__item">\n.*?<a href="(.*?)">\n.*?<h3 class="latest-stories__item-headline">(.*?)<\/h3>\n.*?<\/a>/g;
+                let match = [...data.matchAll(regex)];
 
-            
-            let res_data = [];
-            match.forEach(match_data => {
+                
+                let res_data = [];
+                match.forEach(match_data => {
 
-                //store the data on empty array and remove all html tags on the title
-                res_data.push({
-                    title: match_data[2].replace(/<.*?>|<\/.*?>/g,""),
-                    link: match_data[1],
+                    //store the data on empty array and remove all html tags on the title
+                    res_data.push({
+                        title: match_data[2].replace(/<.*?>|<\/.*?>/g,""),
+                        link: match_data[1],
+                    });
                 });
-            });
 
-            //return 200 and result data
-            res.writeHead(200,{
-                "Content-Type":"application/json",
-                "Access-Control-Allow-Origin":"*"
+                //return 200 and result data
+                res.writeHead(200,{
+                    "Content-Type":"application/json",
+                    "Access-Control-Allow-Origin":"*"
+                });
+                res.write(JSON.stringify(res_data));
+                res.end();
+        
             });
-            res.write(JSON.stringify(res_data));
-            res.end();
-
         });
+
+        request.end();
         
     },
     notFound: function(req,res){
